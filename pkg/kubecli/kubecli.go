@@ -123,34 +123,34 @@ func NewResourceEventHandlerFuncsForQorkqueue(queue workqueue.RateLimitingInterf
 }
 
 type Controller struct {
-	indexer  cache.Store
+	Indexer  cache.Store
 	queue    workqueue.RateLimitingInterface
 	informer cache.ControllerInterface
 	inner    ControllerFunc
 	done     chan struct{}
 }
 
-func NewController(lw cache.ListerWatcher, queue workqueue.RateLimitingInterface, objType runtime.Object, f ControllerFunc) (cache.Store, *Controller) {
+func NewController(lw cache.ListerWatcher, queue workqueue.RateLimitingInterface, objType runtime.Object, f ControllerFunc) *Controller {
 
 	indexer, informer := cache.NewIndexerInformer(lw, objType, 0, NewResourceEventHandlerFuncsForQorkqueue(queue), cache.Indexers{})
 	return NewControllerFromInformer(indexer, informer, queue, f)
 }
 
-func NewControllerFromInformer(indexer cache.Store, informer cache.ControllerInterface, queue workqueue.RateLimitingInterface, f ControllerFunc) (cache.Store, *Controller) {
+func NewControllerFromInformer(indexer cache.Store, informer cache.ControllerInterface, queue workqueue.RateLimitingInterface, f ControllerFunc) *Controller {
 	c := &Controller{
 		informer: informer,
-		indexer:  indexer,
+		Indexer:  indexer,
 		queue:    queue,
 		inner:    f,
 		done:     make(chan struct{}),
 	}
-	return indexer, c
+	return c
 }
 
 type ControllerFunc func(cache.Store, workqueue.RateLimitingInterface) bool
 
 func (controller *Controller) execute() bool {
-	running := controller.inner(controller.indexer, controller.queue)
+	running := controller.inner(controller.Indexer, controller.queue)
 	if !running {
 		close(controller.done)
 	}

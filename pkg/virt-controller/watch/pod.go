@@ -28,14 +28,14 @@ func scheduledVMPodSelector() kubeapi.ListOptions {
 	return kubeapi.ListOptions{FieldSelector: fieldSelector, LabelSelector: labelSelector}
 }
 
-func NewPodController(vmCache cache.Store, recorder record.EventRecorder, clientset *kubernetes.Clientset, restClient *rest.RESTClient, vmService services.VMService) (cache.Store, *kubecli.Controller) {
+func NewPodController(vmCache cache.Store, recorder record.EventRecorder, clientset *kubernetes.Clientset, restClient *rest.RESTClient, vmService services.VMService) *kubecli.Controller {
 
 	selector := scheduledVMPodSelector()
 	lw := kubecli.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "pods", kubeapi.NamespaceDefault, selector.FieldSelector, selector.LabelSelector)
 	return NewPodControllerWithListWatch(vmCache, recorder, lw, restClient, vmService, clientset)
 }
 
-func NewPodControllerWithListWatch(vmCache cache.Store, _ record.EventRecorder, lw cache.ListerWatcher, restClient *rest.RESTClient, vmService services.VMService, clientset *kubernetes.Clientset) (cache.Store, *kubecli.Controller) {
+func NewPodControllerWithListWatch(vmCache cache.Store, _ record.EventRecorder, lw cache.ListerWatcher, restClient *rest.RESTClient, vmService services.VMService, clientset *kubernetes.Clientset) *kubecli.Controller {
 
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	return kubecli.NewController(lw, queue, &v1.Pod{}, NewPodControllerFunc(vmCache, restClient, vmService, clientset))

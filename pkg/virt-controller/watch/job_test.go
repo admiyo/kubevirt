@@ -55,7 +55,7 @@ var _ = Describe("Migration", func() {
 		lw = framework.NewFakeControllerSource()
 		jobCache = cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil)
 
-		_, jobController = NewJobControllerWithListWatch(vmService, nil, lw, restClient)
+		jobController = NewJobControllerWithListWatch(vmService, nil, lw, restClient)
 
 		vm = kvirtv1.NewMinimalVM("test-vm")
 		vm.Status.Phase = kvirtv1.Migrating

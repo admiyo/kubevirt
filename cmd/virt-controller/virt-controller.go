@@ -69,7 +69,8 @@ func main() {
 	if err != nil {
 		golog.Fatal(err)
 	}
-	vmCache, vmController := watch.NewVMController(vmService, nil, restClient)
+	vmController := watch.NewVMController(vmService, nil, restClient)
+	vmCache := vmController.Indexer
 
 	vmController.StartInformer(stop)
 	go vmController.Run(1, stop)
@@ -77,16 +78,16 @@ func main() {
 	vmController.WaitForSync(stop)
 
 	// Start watching pods
-	_, podController := watch.NewPodController(vmCache, nil, clientSet, restClient, vmService)
+	podController := watch.NewPodController(vmCache, nil, clientSet, restClient, vmService)
 	podController.StartInformer(stop)
 	go podController.Run(1, stop)
 
-	_, migrationController := watch.NewMigrationController(vmService, nil, restClient)
+	migrationController := watch.NewMigrationController(vmService, nil, restClient)
 	migrationController.StartInformer(stop)
 	go migrationController.Run(1, stop)
 	migrationController.WaitForSync(stop)
 
-	_, jobController := watch.NewJobController(vmService, nil, clientSet, restClient)
+	jobController := watch.NewJobController(vmService, nil, clientSet, restClient)
 	jobController.StartInformer(stop)
 	go jobController.Run(1, stop)
 	jobController.WaitForSync(stop)

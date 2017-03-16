@@ -17,12 +17,12 @@ import (
 	"strings"
 )
 
-func NewVMController(vmService services.VMService, recorder record.EventRecorder, restClient *rest.RESTClient) (cache.Store, *kubecli.Controller) {
+func NewVMController(vmService services.VMService, recorder record.EventRecorder, restClient *rest.RESTClient) *kubecli.Controller {
 	lw := cache.NewListWatchFromClient(restClient, "vms", kubeapi.NamespaceDefault, fields.Everything())
 	return NewVMControllerWithListWatch(vmService, recorder, lw, restClient)
 }
 
-func NewVMControllerWithListWatch(vmService services.VMService, _ record.EventRecorder, lw cache.ListerWatcher, restClient *rest.RESTClient) (cache.Store, *kubecli.Controller) {
+func NewVMControllerWithListWatch(vmService services.VMService, _ record.EventRecorder, lw cache.ListerWatcher, restClient *rest.RESTClient) *kubecli.Controller {
 
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	return kubecli.NewController(lw, queue, &v1.VM{}, NewVMControllerFunc(restClient, vmService))

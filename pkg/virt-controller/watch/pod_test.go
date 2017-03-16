@@ -40,7 +40,7 @@ var _ = Describe("Pod", func() {
 		vmCache = cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil)
 		lw = framework.NewFakeControllerSource()
 		mockVMService = services.NewMockVMService(ctrl)
-		_, podController = NewPodControllerWithListWatch(vmCache, nil, lw, restClient, mockVMService, coreClient)
+		podController = NewPodControllerWithListWatch(vmCache, nil, lw, restClient, mockVMService, coreClient)
 
 		// Start the controller
 		podController.StartInformer(stopChan)

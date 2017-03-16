@@ -54,7 +54,7 @@ var _ = Describe("VM watcher", func() {
 		lw = framework.NewFakeControllerSource()
 		migrationCache = cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil)
 
-		_, vmController = NewVMControllerWithListWatch(vmService, nil, lw, restClient)
+		vmController = NewVMControllerWithListWatch(vmService, nil, lw, restClient)
 
 		// Start the controller
 		vmController.StartInformer(stopChan)

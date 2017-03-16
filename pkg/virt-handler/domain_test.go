@@ -28,7 +28,7 @@ var _ = Describe("Domain", func() {
 		vmStore = cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc)
 		vmQueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 		informer := cache.NewSharedInformer(fakeWatcher, &virtwrap.Domain{}, 0)
-		_, controller := NewDomainController(vmQueue, vmStore, informer)
+		controller := NewDomainController(vmQueue, vmStore, informer)
 		controller.StartInformer(stopChan)
 		controller.WaitForSync(stopChan)
 		go controller.Run(1, stopChan)

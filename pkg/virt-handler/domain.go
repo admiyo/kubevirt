@@ -14,7 +14,7 @@ TODO: Define the exact scope of this controller.
 For now it looks like we should use domain events to detect unexpected domain changes like crashes or vms going
 into pause mode because of resource shortage or cut off connections to storage.
 */
-func NewDomainController(vmQueue workqueue.RateLimitingInterface, vmStore cache.Store, informer cache.SharedInformer) (cache.Store, *kubecli.Controller) {
+func NewDomainController(vmQueue workqueue.RateLimitingInterface, vmStore cache.Store, informer cache.SharedInformer) *kubecli.Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	informer.AddEventHandler(kubecli.NewResourceEventHandlerFuncsForQorkqueue(queue))
 

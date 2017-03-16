@@ -53,7 +53,8 @@ var _ = Describe("VM", func() {
 		restClient, err := kubecli.GetRESTClientFromFlags(server.URL(), "")
 		Expect(err).ToNot(HaveOccurred())
 
-		vmStore, vmQueue, controller = NewVMController(fakeWatcher, mockManager, record.NewFakeRecorder(100), *restClient, coreClient, "master")
+		vmQueue, controller = NewVMController(fakeWatcher, mockManager, record.NewFakeRecorder(100), *restClient, coreClient, "master")
+		vmStore = controller.Indexer
 		controller.StartInformer(stopChan)
 		controller.WaitForSync(stopChan)
 		go controller.Run(1, stopChan)
