@@ -126,7 +126,7 @@ type Controller struct {
 	indexer  cache.Store
 	queue    workqueue.RateLimitingInterface
 	informer cache.ControllerInterface
-	f        ControllerFunc
+	inner    ControllerFunc
 	done     chan struct{}
 }
 
@@ -141,19 +141,21 @@ func NewControllerFromInformer(indexer cache.Store, informer cache.ControllerInt
 		informer: informer,
 		indexer:  indexer,
 		queue:    queue,
+		inner:    f,
 		done:     make(chan struct{}),
-	}
-	c.f = func(s cache.Store, w workqueue.RateLimitingInterface) bool {
-		running := f(s, w)
-		if !running {
-			close(c.done)
-		}
-		return running
 	}
 	return indexer, c
 }
 
 type ControllerFunc func(cache.Store, workqueue.RateLimitingInterface) bool
+
+func (controller *Controller) execute() bool {
+	running := controller.inner(controller.indexer, controller.queue)
+	if !running {
+		close(controller.done)
+	}
+	return running
+}
 
 func (c *Controller) Run(threadiness int, stopCh chan struct{}) {
 	defer HandlePanic()
@@ -177,7 +179,7 @@ func (c *Controller) WaitForSync(stopCh chan struct{}) {
 }
 
 func (c *Controller) runWorker() {
-	for c.f(c.indexer, c.queue) {
+	for c.execute() {
 	}
 }
 
