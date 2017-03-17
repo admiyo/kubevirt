@@ -23,7 +23,9 @@ import (
 
 func NewVMController(lw cache.ListerWatcher, domainManager virtwrap.DomainManager, recorder record.EventRecorder, restClient rest.RESTClient, clientset *kubernetes.Clientset, host string) (workqueue.RateLimitingInterface, *kubecli.Controller) {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-	informer := kubecli.NewController(lw, queue, &v1.VM{}, func(store cache.Store, queue workqueue.RateLimitingInterface) bool {
+	informer := kubecli.NewController(lw, queue, &v1.VM{}, func(c *kubecli.Controller) bool {
+		store := c.Indexer
+		queue := c.Queue
 		key, quit := queue.Get()
 		if quit {
 			return false

@@ -18,7 +18,9 @@ func NewDomainController(vmQueue workqueue.RateLimitingInterface, vmStore cache.
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	informer.AddEventHandler(kubecli.NewResourceEventHandlerFuncsForQorkqueue(queue))
 
-	return kubecli.NewControllerFromInformer(informer.GetStore(), informer, queue, func(indexer cache.Store, queue workqueue.RateLimitingInterface) bool {
+	return kubecli.NewControllerFromInformer(informer.GetStore(), informer, queue, func(c *kubecli.Controller) bool {
+		indexer := c.Indexer
+		queue := c.Queue
 		key, quit := queue.Get()
 		if quit {
 			return false

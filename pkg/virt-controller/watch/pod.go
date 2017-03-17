@@ -43,7 +43,10 @@ func NewPodControllerWithListWatch(vmCache cache.Store, _ record.EventRecorder, 
 
 func NewPodControllerFunc(vmCache cache.Store, restClient *rest.RESTClient, vmService services.VMService, clientset *kubernetes.Clientset) kubecli.ControllerFunc {
 
-	return func(store cache.Store, queue workqueue.RateLimitingInterface) bool {
+	return func(c *kubecli.Controller) bool {
+		store := c.Indexer
+		queue := c.Queue
+
 		key, quit := queue.Get()
 		if quit {
 			return false

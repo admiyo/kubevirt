@@ -30,7 +30,9 @@ func NewVMControllerWithListWatch(vmService services.VMService, _ record.EventRe
 
 func NewVMControllerFunc(restClient *rest.RESTClient, vmService services.VMService) kubecli.ControllerFunc {
 
-	return func(store cache.Store, queue workqueue.RateLimitingInterface) bool {
+	return func(c *kubecli.Controller) bool {
+		store := c.Indexer
+		queue := c.Queue
 		key, quit := queue.Get()
 		if quit {
 			return false

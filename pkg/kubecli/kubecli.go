@@ -124,7 +124,7 @@ func NewResourceEventHandlerFuncsForQorkqueue(queue workqueue.RateLimitingInterf
 
 type Controller struct {
 	Indexer  cache.Store
-	queue    workqueue.RateLimitingInterface
+	Queue    workqueue.RateLimitingInterface
 	informer cache.ControllerInterface
 	inner    ControllerFunc
 	done     chan struct{}
@@ -140,26 +140,24 @@ func NewControllerFromInformer(indexer cache.Store, informer cache.ControllerInt
 	c := &Controller{
 		informer: informer,
 		Indexer:  indexer,
-		queue:    queue,
+		Queue:    queue,
 		inner:    f,
 		done:     make(chan struct{}),
 	}
 	return c
 }
 
-type ControllerFunc func(cache.Store, workqueue.RateLimitingInterface) bool
+type ControllerFunc func(controller *Controller) bool
 
 func (controller *Controller) execute() bool {
-	running := controller.inner(controller.Indexer, controller.queue)
-	if !running {
-		close(controller.done)
-	}
+	running := controller.inner(controller)
+
 	return running
 }
 
 func (c *Controller) Run(threadiness int, stopCh chan struct{}) {
 	defer HandlePanic()
-	defer c.queue.ShutDown()
+	defer c.Queue.ShutDown()
 	logging.DefaultLogger().Info().Msg("Starting controller.")
 
 	for i := 0; i < threadiness; i++ {
@@ -179,8 +177,10 @@ func (c *Controller) WaitForSync(stopCh chan struct{}) {
 }
 
 func (c *Controller) runWorker() {
-	for c.execute() {
+
+	for c.inner(c) {
 	}
+	close(c.done)
 }
 
 func (c *Controller) WaitUntilDone() {
@@ -190,5 +190,5 @@ func (c *Controller) WaitUntilDone() {
 // Shut down the embedded queue. After the shutdown was issued, all items already in the queue will be processed but no
 // new items will be accepted. It is possible to wait via #WaitUntilDone() until the last item was processed.
 func (c *Controller) ShutDownQueue() {
-	c.queue.ShutDown()
+	c.Queue.ShutDown()
 }
