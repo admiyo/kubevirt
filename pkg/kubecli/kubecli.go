@@ -147,13 +147,7 @@ func NewControllerFromInformer(indexer cache.Store, informer cache.ControllerInt
 	return c
 }
 
-type ControllerFunc func(controller *Controller) bool
-
-func (controller *Controller) execute() bool {
-	running := controller.inner(controller)
-
-	return running
-}
+type ControllerFunc func(controller *Controller, key interface{})
 
 func (c *Controller) Run(threadiness int, stopCh chan struct{}) {
 	defer HandlePanic()
@@ -178,7 +172,16 @@ func (c *Controller) WaitForSync(stopCh chan struct{}) {
 
 func (c *Controller) runWorker() {
 
-	for c.inner(c) {
+	working := true
+	for working {
+
+		key, quit := c.Queue.Get()
+		if quit {
+			working = false
+		} else {
+			c.inner(c, key)
+		}
+		defer c.Queue.Done(key)
 	}
 	close(c.done)
 }
