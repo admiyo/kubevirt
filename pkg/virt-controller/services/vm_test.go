@@ -65,7 +65,7 @@ var _ = Describe("VM", func() {
 					ghttp.RespondWithJSONEncoded(http.StatusOK, pod),
 				),
 			)
-			err := vmService.SetupMigration(migration, vm)
+			err := vmService.CreateMigrationTargetPod(migration, vm)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(server.ReceivedRequests())).To(Equal(1))
 
