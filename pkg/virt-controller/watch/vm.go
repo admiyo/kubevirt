@@ -248,29 +248,24 @@ func (pd *podDispatch) Execute(podStore cache.Store, podQueue workqueue.RateLimi
 	}
 	// This is basically a hack, so that virt-handler can completely focus on the VM object and does not have to care about pods
 	if vm.Status.Phase == corev1.Scheduling {
-		pd.handleScheduling(podQueue, key, vm, pod)
-	}
-	return
-}
+		// deep copy the VM to allow manipulations
+		vmCopy := corev1.VM{}
+		model.Copy(&vmCopy, vm)
 
-func (pd *podDispatch) handleScheduling(podQueue workqueue.RateLimitingInterface, key interface{}, vm *corev1.VM, pod *k8sv1.Pod) {
-	// deep copy the VM to allow manipulations
-	vmCopy := corev1.VM{}
-	model.Copy(&vmCopy, vm)
-
-	vmCopy.Status.Phase = corev1.Pending
-	// FIXME we store this in the metadata since field selctors are currently not working for TPRs
-	if vmCopy.GetObjectMeta().GetLabels() == nil {
-		vmCopy.ObjectMeta.Labels = map[string]string{}
+		vmCopy.Status.Phase = corev1.Pending
+		// FIXME we store this in the metadata since field selctors are currently not working for TPRs
+		if vmCopy.GetObjectMeta().GetLabels() == nil {
+			vmCopy.ObjectMeta.Labels = map[string]string{}
+		}
+		vmCopy.ObjectMeta.Labels[corev1.NodeNameLabel] = pod.Spec.NodeName
+		vmCopy.Status.NodeName = pod.Spec.NodeName
+		// Update the VM
+		logger := logging.DefaultLogger()
+		if _, err := pd.vmService.PutVm(&vmCopy); err != nil {
+			logger.V(3).Info().Msg("Enqueuing VM again.")
+			podQueue.AddRateLimited(key)
+			return
+		}
+		logger.Info().Msgf("VM successfully scheduled to %s.", vmCopy.Status.NodeName)
 	}
-	vmCopy.ObjectMeta.Labels[corev1.NodeNameLabel] = pod.Spec.NodeName
-	vmCopy.Status.NodeName = pod.Spec.NodeName
-	// Update the VM
-	logger := logging.DefaultLogger()
-	if _, err := pd.vmService.PutVm(&vmCopy); err != nil {
-		logger.V(3).Info().Msg("Enqueuing VM again.")
-		podQueue.AddRateLimited(key)
-		return
-	}
-	logger.Info().Msgf("VM successfully scheduled to %s.", vmCopy.Status.NodeName)
 }
