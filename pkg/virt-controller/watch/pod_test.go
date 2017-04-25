@@ -61,56 +61,6 @@ var _ = Describe("Pod", func() {
 		migrationPodDispatch = NewMigrationPodControllerDispatch(vmCache, restClient, vmService, clientSet, migrationQueue)
 	})
 
-	Context("Running Pod for unscheduled VM given", func() {
-		It("should update the VM with the node of the running Pod", func(done Done) {
-
-			// Create a VM which is being scheduled
-			vm := v1.NewMinimalVM("testvm")
-			vm.Status.Phase = v1.Scheduling
-			vm.ObjectMeta.SetUID(uuid.NewUUID())
-
-			// Add the VM to the cache
-			vmCache.Add(vm)
-
-			// Create a target Pod for the VM
-			temlateService, err := services.NewTemplateService("whatever")
-			Expect(err).ToNot(HaveOccurred())
-			var pod *kubev1.Pod
-			pod, err = temlateService.RenderLaunchManifest(vm)
-			Expect(err).ToNot(HaveOccurred())
-			pod.Spec.NodeName = "mynode"
-
-			// Create the expected VM after the update
-			obj, err := conversion.NewCloner().DeepCopy(vm)
-			Expect(err).ToNot(HaveOccurred())
-
-			expectedVM := obj.(*v1.VM)
-			expectedVM.Status.Phase = v1.Pending
-			expectedVM.Status.NodeName = pod.Spec.NodeName
-			expectedVM.ObjectMeta.Labels = map[string]string{v1.NodeNameLabel: pod.Spec.NodeName}
-
-			// Register the expected REST call
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("PUT", "/apis/kubevirt.io/v1alpha1/namespaces/default/vms/testvm"),
-					ghttp.VerifyJSONRepresenting(expectedVM),
-					ghttp.RespondWithJSONEncoded(http.StatusOK, expectedVM),
-				),
-			)
-
-			// Tell the controller that there is a new running Pod
-
-			queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-			key, _ := cache.MetaNamespaceKeyFunc(pod)
-			podCache.Add(pod)
-			queue.Add(key)
-			podDispatch.Execute(podCache, queue, key)
-
-			Expect(len(server.ReceivedRequests())).To(Equal(1))
-			close(done)
-		}, 10)
-	})
-
 	Context("Running Migration target Pod for a running VM given", func() {
 		var (
 			srcIp      = kubev1.NodeAddress{}
