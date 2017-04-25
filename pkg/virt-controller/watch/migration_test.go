@@ -134,7 +134,7 @@ var _ = Describe("Migration", func() {
 
 		vmCache = cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil)
 		podCache = cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil)
-		migrationPodDispatch = NewMigrationPodControllerDispatch(vmCache, restClient, vmService, clientSet, migrationQueue)
+		migrationPodDispatch = NewTargetPodControllerDispatch(vmCache, restClient, vmService, clientSet, migrationQueue)
 
 	})
 
