@@ -1,20 +1,14 @@
 package watch
 
 import (
-	"net/http"
-
 	"github.com/facebookgo/inject"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	"k8s.io/client-go/kubernetes"
-	kubev1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/conversion"
-	"k8s.io/client-go/pkg/util/uuid"
 	"k8s.io/client-go/pkg/util/workqueue"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/kubecli"
 	"kubevirt.io/kubevirt/pkg/logging"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
@@ -61,128 +55,4 @@ var _ = Describe("Pod", func() {
 		migrationPodDispatch = NewMigrationPodControllerDispatch(vmCache, restClient, vmService, clientSet, migrationQueue)
 	})
 
-	Context("Running Migration target Pod for a running VM given", func() {
-		var (
-			srcIp      = kubev1.NodeAddress{}
-			destIp     = kubev1.NodeAddress{}
-			srcNodeIp  = kubev1.Node{}
-			destNodeIp = kubev1.Node{}
-			srcNode    kubev1.Node
-			targetNode kubev1.Node
-		)
-
-		BeforeEach(func() {
-			srcIp = kubev1.NodeAddress{
-				Type:    kubev1.NodeInternalIP,
-				Address: "127.0.0.2",
-			}
-			destIp = kubev1.NodeAddress{
-				Type:    kubev1.NodeInternalIP,
-				Address: "127.0.0.3",
-			}
-			srcNodeIp = kubev1.Node{
-				Status: kubev1.NodeStatus{
-					Addresses: []kubev1.NodeAddress{srcIp},
-				},
-			}
-			destNodeIp = kubev1.Node{
-				Status: kubev1.NodeStatus{
-					Addresses: []kubev1.NodeAddress{destIp},
-				},
-			}
-			srcNode = kubev1.Node{
-				ObjectMeta: kubev1.ObjectMeta{
-					Name: "sourceNode",
-				},
-				Status: kubev1.NodeStatus{
-					Addresses: []kubev1.NodeAddress{srcIp, destIp},
-				},
-			}
-			targetNode = kubev1.Node{
-				ObjectMeta: kubev1.ObjectMeta{
-					Name: "targetNode",
-				},
-				Status: kubev1.NodeStatus{
-					Addresses: []kubev1.NodeAddress{destIp, srcIp},
-				},
-			}
-		})
-
-		It("should update the VM Phase and migration target node of the running Pod", func(done Done) {
-
-			// Create a VM which is being scheduled
-			vm := v1.NewMinimalVM("testvm")
-			vm.Status.Phase = v1.Running
-			vm.ObjectMeta.SetUID(uuid.NewUUID())
-			vm.Status.NodeName = "sourceNode"
-
-			// Add the VM to the cache
-			vmCache.Add(vm)
-
-			// Create a target Pod for the VM
-			pod := mockMigrationPod(vm)
-
-			// Create the expected VM after the update
-			obj, err := conversion.NewCloner().DeepCopy(vm)
-			Expect(err).ToNot(HaveOccurred())
-
-			vmWithMigrationNodeName := obj.(*v1.VM)
-			vmWithMigrationNodeName.Status.MigrationNodeName = pod.Spec.NodeName
-
-			obj, err = conversion.NewCloner().DeepCopy(vmWithMigrationNodeName)
-			Expect(err).ToNot(HaveOccurred())
-
-			vmInMigrationState := obj.(*v1.VM)
-			vmInMigrationState.Status.Phase = v1.Migrating
-			migration := v1.NewMinimalMigration("testvm-migration", "testvm")
-			migration.Status.Phase = v1.MigrationInProgress
-
-			// Register the expected REST call
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/apis/kubevirt.io/v1alpha1/namespaces/default/migrations/testvm-migration"),
-					ghttp.RespondWithJSONEncoded(http.StatusOK, migration),
-				),
-			)
-
-			queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-			key, _ := cache.MetaNamespaceKeyFunc(pod)
-			podCache.Add(pod)
-			queue.Add(key)
-			migrationPodDispatch.Execute(podCache, queue, key)
-
-			Expect(len(server.ReceivedRequests())).To(Equal(1))
-			Expect(migrationQueue.Len()).To(Equal(1))
-			close(done)
-		}, 10)
-	})
-
-	AfterEach(func() {
-		server.Close()
-	})
 })
-
-func mockMigrationPod(vm *v1.VM) *kubev1.Pod {
-	temlateService, err := services.NewTemplateService("whatever")
-	Expect(err).ToNot(HaveOccurred())
-	pod, err := temlateService.RenderLaunchManifest(vm)
-	Expect(err).ToNot(HaveOccurred())
-	pod.Spec.NodeName = "targetNode"
-	pod.Labels[v1.MigrationLabel] = "testvm-migration"
-	return pod
-}
-
-func handlePutVM(vm *v1.VM) http.HandlerFunc {
-	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest("PUT", "/apis/kubevirt.io/v1alpha1/namespaces/default/vms/"+vm.ObjectMeta.Name),
-		ghttp.VerifyJSONRepresenting(vm),
-		ghttp.RespondWithJSONEncoded(http.StatusOK, vm),
-	)
-}
-
-func handleGetNode(node kubev1.Node) http.HandlerFunc {
-	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest("GET", "/api/v1/nodes/"+node.ObjectMeta.Name),
-		ghttp.RespondWithJSONEncoded(http.StatusOK, node),
-	)
-}
