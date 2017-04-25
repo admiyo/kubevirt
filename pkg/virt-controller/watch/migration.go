@@ -6,6 +6,8 @@ import (
 	k8sv1 "k8s.io/client-go/pkg/api/v1"
 	metav1 "k8s.io/client-go/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/fields"
+	"k8s.io/client-go/pkg/labels"
+	"k8s.io/client-go/pkg/types"
 	"k8s.io/client-go/pkg/util/workqueue"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -13,16 +15,37 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 	"kubevirt.io/kubevirt/pkg/api/v1"
+	corev1 "kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/kubecli"
 	"kubevirt.io/kubevirt/pkg/logging"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 )
+
+func migrationVMPodSelector() kubeapi.ListOptions {
+	fieldSelectionQuery := fmt.Sprintf("status.phase=%s", string(kubeapi.PodRunning))
+	fieldSelector := fields.ParseSelectorOrDie(fieldSelectionQuery)
+	labelSelectorQuery := fmt.Sprintf("%s, %s in (virt-launcher)", string(corev1.MigrationLabel), corev1.AppLabel)
+	labelSelector, err := labels.Parse(labelSelectorQuery)
+
+	if err != nil {
+		panic(err)
+	}
+	return kubeapi.ListOptions{FieldSelector: fieldSelector, LabelSelector: labelSelector}
+}
 
 func NewMigrationController(migrationService services.VMService, recorder record.EventRecorder, restClient *rest.RESTClient, clientset *kubernetes.Clientset) (cache.Store, *kubecli.Controller, *workqueue.RateLimitingInterface) {
 	lw := cache.NewListWatchFromClient(restClient, "migrations", k8sv1.NamespaceDefault, fields.Everything())
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	store, controller := kubecli.NewController(lw, queue, &v1.Migration{}, NewMigrationControllerDispatch(migrationService, restClient, clientset))
 	return store, controller, &queue
+}
+
+func NewMigrationPodController(vmCache cache.Store, recorder record.EventRecorder, clientset *kubernetes.Clientset, restClient *rest.RESTClient, vmService services.VMService, migrationQueue workqueue.RateLimitingInterface) (cache.Store, *kubecli.Controller) {
+
+	selector := migrationVMPodSelector()
+	lw := kubecli.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "pods", kubeapi.NamespaceDefault, selector.FieldSelector, selector.LabelSelector)
+	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	return kubecli.NewController(lw, queue, &k8sv1.Pod{}, NewMigrationPodControllerDispatch(vmCache, restClient, vmService, clientset, migrationQueue))
 }
 
 func NewMigrationControllerDispatch(vmService services.VMService, restClient *rest.RESTClient, clientset *kubernetes.Clientset) kubecli.ControllerDispatch {
@@ -33,6 +56,25 @@ func NewMigrationControllerDispatch(vmService services.VMService, restClient *re
 		clientset:  clientset,
 	}
 	return &dispatch
+}
+
+func NewMigrationPodControllerDispatch(vmCache cache.Store, restClient *rest.RESTClient, vmService services.VMService, clientset *kubernetes.Clientset, migrationQueue workqueue.RateLimitingInterface) kubecli.ControllerDispatch {
+	dispatch := migrationPodDispatch{
+		vmCache:        vmCache,
+		restClient:     restClient,
+		vmService:      vmService,
+		clientset:      clientset,
+		migrationQueue: migrationQueue,
+	}
+	return &dispatch
+}
+
+type migrationPodDispatch struct {
+	vmCache        cache.Store
+	restClient     *rest.RESTClient
+	vmService      services.VMService
+	clientset      *kubernetes.Clientset
+	migrationQueue workqueue.RateLimitingInterface
 }
 
 type MigrationDispatch struct {
@@ -296,4 +338,58 @@ func mergeConstraints(migration *v1.Migration, vm *v1.VM) error {
 	}
 	vm.Spec.NodeSelector = merged
 	return nil
+}
+
+func (pd *migrationPodDispatch) Execute(podStore cache.Store, podQueue workqueue.RateLimitingInterface, key interface{}) {
+	// Fetch the latest Vm state from cache
+	obj, exists, err := podStore.GetByKey(key.(string))
+
+	if err != nil {
+		podQueue.AddRateLimited(key)
+		return
+	}
+
+	if !exists {
+		// Do nothing
+		return
+	}
+	pod := obj.(*k8sv1.Pod)
+
+	vmObj, exists, err := pd.vmCache.GetByKey(kubeapi.NamespaceDefault + "/" + pod.GetLabels()[corev1.DomainLabel])
+	if err != nil {
+		podQueue.AddRateLimited(key)
+		return
+	}
+	if !exists {
+		// Do nothing, the pod will timeout.
+		return
+	}
+	vm := vmObj.(*corev1.VM)
+	if vm.GetObjectMeta().GetUID() != types.UID(pod.GetLabels()[corev1.VMUIDLabel]) {
+		// Obviously the pod of an outdated VM object, do nothing
+		return
+	}
+	pd.handleMigration(podStore, podQueue, key, vm, pod)
+	return
+}
+
+func (pd *migrationPodDispatch) handleMigration(store cache.Store, queue workqueue.RateLimitingInterface, key interface{}, vm *corev1.VM, pod *k8sv1.Pod) {
+	logger := logging.DefaultLogger()
+
+	// Get associated migration
+	obj, err := pd.restClient.Get().Resource("migrations").Namespace(k8sv1.NamespaceDefault).Name(pod.Labels[corev1.MigrationLabel]).Do().Get()
+	if err != nil {
+		logger.Error().Reason(err).Msgf("Fetching migration %s failed.", pod.Labels[corev1.MigrationLabel])
+		queue.AddRateLimited(key)
+		return
+	}
+	migration := obj.(*corev1.Migration)
+	migrationKey, err := cache.MetaNamespaceKeyFunc(migration)
+	if err == nil {
+		pd.migrationQueue.Add(migrationKey)
+	} else {
+		logger.Error().Reason(err).Msgf("Updating migration queue failed.", pod.Labels[corev1.MigrationLabel])
+		queue.AddRateLimited(key)
+		return
+	}
 }
