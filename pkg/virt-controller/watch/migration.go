@@ -50,40 +50,46 @@ func NewMigrationPodController(vmCache cache.Store, recorder record.EventRecorde
 
 func NewMigrationControllerDispatch(vmService services.VMService, restClient *rest.RESTClient, clientset *kubernetes.Clientset) kubecli.ControllerDispatch {
 
-	dispatch := MigrationDispatch{
-		restClient: restClient,
-		vmService:  vmService,
-		clientset:  clientset,
+	dispatch := migrationDispatch{
+		BaseDispatch: BaseDispatch{
+			restClient: restClient,
+			vmService:  vmService,
+			clientSet:  clientset,
+		},
 	}
 	return &dispatch
 }
 
 func NewTargetPodControllerDispatch(vmCache cache.Store, restClient *rest.RESTClient, vmService services.VMService, clientset *kubernetes.Clientset, migrationQueue workqueue.RateLimitingInterface) kubecli.ControllerDispatch {
 	dispatch := targetPodDispatch{
-		vmCache:        vmCache,
-		restClient:     restClient,
-		vmService:      vmService,
-		clientset:      clientset,
+		BaseDispatch: BaseDispatch{
+			restClient: restClient,
+			vmService:  vmService,
+			clientSet:  clientset,
+		},
+		vmCache: vmCache,
 		migrationQueue: migrationQueue,
 	}
 	return &dispatch
 }
 
+type BaseDispatch struct {
+	restClient *rest.RESTClient
+	vmService  services.VMService
+	clientSet  *kubernetes.Clientset
+}
+
 type targetPodDispatch struct {
+	BaseDispatch
 	vmCache        cache.Store
-	restClient     *rest.RESTClient
-	vmService      services.VMService
-	clientset      *kubernetes.Clientset
 	migrationQueue workqueue.RateLimitingInterface
 }
 
-type MigrationDispatch struct {
-	restClient *rest.RESTClient
-	vmService  services.VMService
-	clientset  *kubernetes.Clientset
+type migrationDispatch struct {
+	BaseDispatch
 }
 
-func (md *MigrationDispatch) Execute(store cache.Store, queue workqueue.RateLimitingInterface, key interface{}) {
+func (md *migrationDispatch) Execute(store cache.Store, queue workqueue.RateLimitingInterface, key interface{}) {
 
 	setMigrationPhase := func(migration *v1.Migration, phase v1.MigrationPhase) error {
 
@@ -243,13 +249,13 @@ func (md *MigrationDispatch) Execute(store cache.Store, queue workqueue.RateLimi
 		}
 
 		if !exists {
-			sourceNode, err := md.clientset.CoreV1().Nodes().Get(vm.Status.NodeName, metav1.GetOptions{})
+			sourceNode, err := md.clientSet.CoreV1().Nodes().Get(vm.Status.NodeName, metav1.GetOptions{})
 			if err != nil {
 				logger.Error().Reason(err).Msgf("Fetching source node %s failed.", vm.Status.NodeName)
 				queue.AddRateLimited(key)
 				return
 			}
-			targetNode, err := md.clientset.CoreV1().Nodes().Get(vm.Status.MigrationNodeName, metav1.GetOptions{})
+			targetNode, err := md.clientSet.CoreV1().Nodes().Get(vm.Status.MigrationNodeName, metav1.GetOptions{})
 			if err != nil {
 				logger.Error().Reason(err).Msgf("Fetching target node %s failed.", vm.Status.MigrationNodeName)
 				queue.AddRateLimited(key)
@@ -290,7 +296,7 @@ func (md *MigrationDispatch) Execute(store cache.Store, queue workqueue.RateLimi
 	queue.Forget(key)
 	return
 }
-func (md *MigrationDispatch) updateVm(vmCopy *v1.VM) error {
+func (md *migrationDispatch) updateVm(vmCopy *v1.VM) error {
 	if _, err := md.vmService.PutVm(vmCopy); err != nil {
 		logger := logging.DefaultLogger().Object(vmCopy)
 		logger.V(3).Info().Msg("Enqueuing VM again.")
