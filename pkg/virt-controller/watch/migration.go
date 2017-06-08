@@ -42,7 +42,7 @@ import (
 )
 
 func NewMigrationController(migrationService services.VMService, restClient *rest.RESTClient, clientset *kubernetes.Clientset) *MigrationController {
-	lw := cache.NewListWatchFromClient(restClient, "migrations", k8sv1.NamespaceDefault, fields.Everything())
+	lw := cache.NewListWatchFromClient(restClient, "migrations", k8sv1.NamespaceAll, fields.Everything())
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	store, informer := cache.NewIndexerInformer(lw, &kubev1.Migration{}, 0, kubecli.NewResourceEventHandlerFuncsForWorkqueue(queue), cache.Indexers{})
 	return &MigrationController{
@@ -382,7 +382,7 @@ func migrationJobSelector() kubeapi.ListOptions {
 // Informer, which checks for Jobs, orchestrating the migrations done by libvirt
 func NewMigrationJobInformer(clientSet *kubernetes.Clientset, migrationQueue workqueue.RateLimitingInterface) (cache.Store, cache.ControllerInterface) {
 	selector := migrationJobSelector()
-	lw := kubecli.NewListWatchFromClient(clientSet.CoreV1().RESTClient(), "pods", kubeapi.NamespaceDefault, selector.FieldSelector, selector.LabelSelector)
+	lw := kubecli.NewListWatchFromClient(clientSet.CoreV1().RESTClient(), "pods", kubeapi.NamespaceAll, selector.FieldSelector, selector.LabelSelector)
 	return cache.NewIndexerInformer(lw, &k8sv1.Pod{}, 0,
 		kubecli.NewResourceEventHandlerFuncsForFunc(migrationLabelHandler(migrationQueue)),
 		cache.Indexers{})
@@ -391,7 +391,7 @@ func NewMigrationJobInformer(clientSet *kubernetes.Clientset, migrationQueue wor
 // Informer, which checks for potential migration target Pods
 func NewMigrationPodInformer(clientSet *kubernetes.Clientset, migrationQueue workqueue.RateLimitingInterface) (cache.Store, cache.ControllerInterface) {
 	selector := migrationVMPodSelector()
-	lw := kubecli.NewListWatchFromClient(clientSet.CoreV1().RESTClient(), "pods", kubeapi.NamespaceDefault, selector.FieldSelector, selector.LabelSelector)
+	lw := kubecli.NewListWatchFromClient(clientSet.CoreV1().RESTClient(), "pods", kubeapi.NamespaceAll, selector.FieldSelector, selector.LabelSelector)
 	return cache.NewIndexerInformer(lw, &k8sv1.Pod{}, 0,
 		kubecli.NewResourceEventHandlerFuncsForFunc(migrationLabelHandler(migrationQueue)),
 		cache.Indexers{})

@@ -43,7 +43,7 @@ import (
 )
 
 func NewVMController(vmService services.VMService, recorder record.EventRecorder, restClient *rest.RESTClient, clientset *kubernetes.Clientset) *VMController {
-	lw := cache.NewListWatchFromClient(restClient, "vms", kubeapi.NamespaceDefault, fields.Everything())
+	lw := cache.NewListWatchFromClient(restClient, "vms", kubeapi.NamespaceAll, fields.Everything())
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	indexer, informer := cache.NewIndexerInformer(lw, &kubev1.VM{}, 0, kubecli.NewResourceEventHandlerFuncsForWorkqueue(queue), cache.Indexers{})
 	return &VMController{
@@ -271,7 +271,7 @@ func scheduledVMPodSelector() kubeapi.ListOptions {
 // Informer, which checks for VM target Pods
 func NewVMPodInformer(clientSet *kubernetes.Clientset, vmQueue workqueue.RateLimitingInterface) (cache.Store, cache.ControllerInterface) {
 	selector := scheduledVMPodSelector()
-	lw := kubecli.NewListWatchFromClient(clientSet.CoreV1().RESTClient(), "pods", kubeapi.NamespaceDefault, selector.FieldSelector, selector.LabelSelector)
+	lw := kubecli.NewListWatchFromClient(clientSet.CoreV1().RESTClient(), "pods", kubeapi.NamespaceAll, selector.FieldSelector, selector.LabelSelector)
 	return cache.NewIndexerInformer(lw, &k8sv1.Pod{}, 0,
 		kubecli.NewResourceEventHandlerFuncsForFunc(vmLabelHandler(vmQueue)),
 		cache.Indexers{})
