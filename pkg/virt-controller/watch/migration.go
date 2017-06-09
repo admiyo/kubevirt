@@ -400,6 +400,6 @@ func NewMigrationPodInformer(clientSet *kubernetes.Clientset, migrationQueue wor
 func migrationLabelHandler(migrationQueue workqueue.RateLimitingInterface) func(obj interface{}) {
 	return func(obj interface{}) {
 		migrationLabel := obj.(*k8sv1.Pod).ObjectMeta.Labels[kubev1.MigrationLabel]
-		migrationQueue.Add(k8sv1.NamespaceDefault + "/" + migrationLabel)
+		migrationQueue.Add(obj.(*k8sv1.Pod).ObjectMeta.Namespace + "/" + migrationLabel)
 	}
 }

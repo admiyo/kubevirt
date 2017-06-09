@@ -202,7 +202,7 @@ func (c *VMController) execute(key string) error {
 		// Mark the VM as "initialized". After the created Pod above is scheduled by
 		// kubernetes, virt-handler can take over.
 		vmCopy.Status.Phase = kubev1.Scheduling
-		if err := c.restClient.Put().Resource("vms").Body(&vmCopy).Name(vmCopy.ObjectMeta.Name).Namespace(kubeapi.NamespaceDefault).Do().Error(); err != nil {
+		if err := c.restClient.Put().Resource("vms").Body(&vmCopy).Name(vmCopy.ObjectMeta.Name).Namespace(vmCopy.ObjectMeta.Namespace).Do().Error(); err != nil {
 			logger.Error().Reason(err).Msg("Updating the VM state to 'Scheduling' failed.")
 			return err
 		}
@@ -280,6 +280,6 @@ func NewVMPodInformer(clientSet *kubernetes.Clientset, vmQueue workqueue.RateLim
 func vmLabelHandler(vmQueue workqueue.RateLimitingInterface) func(obj interface{}) {
 	return func(obj interface{}) {
 		domainLabel := obj.(*k8sv1.Pod).ObjectMeta.Labels[kubev1.DomainLabel]
-		vmQueue.Add(k8sv1.NamespaceDefault + "/" + domainLabel)
+		vmQueue.Add(obj.(*k8sv1.Pod).ObjectMeta.Namespace + "/" + domainLabel)
 	}
 }
