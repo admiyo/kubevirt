@@ -147,7 +147,7 @@ func (md *MigrationController) execute(key string) error {
 	}
 	migration := obj.(*kubev1.Migration)
 
-	vm, exists, err := md.vmService.FetchVM(migration.Spec.Selector.Name)
+	vm, exists, err := md.vmService.FetchVM(migration.Spec.Selector.Name, migration.GetObjectMeta().GetNamespace())
 	if err != nil {
 		logger.Error().Reason(err).Msgf("fetching the vm %s failed", migration.Spec.Selector.Name)
 		return err
