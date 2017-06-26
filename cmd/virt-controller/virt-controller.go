@@ -33,7 +33,7 @@ func main() {
 
 	logging.InitializeLogging("virt-controller")
 
-	watch.Register()
+	watch.RegisterLive()
 
 	restful.Add(rest.WebService)
 

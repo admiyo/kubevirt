@@ -35,6 +35,7 @@ import (
 	kubev1 "k8s.io/client-go/pkg/api/v1"
 
 	v1 "kubevirt.io/kubevirt/pkg/api/v1"
+	"kubevirt.io/kubevirt/pkg/dependencies"
 	"kubevirt.io/kubevirt/pkg/logging"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 )
@@ -50,11 +51,10 @@ var _ = Describe("VM watcher", func() {
 
 	logging.DefaultLogger().SetIOWriter(GinkgoWriter)
 
-	RegisterCommon()
 	RegisterTestObjects()
 
 	BeforeEach(func() {
-		CC.Clear()
+		CC = dependencies.NewComponentCache(FS)
 		server = GetTestServer(CC)
 		launcherImage = "kubevirt/virt-launcher"
 		migratorImage = "kubevirt/virt-handler"
@@ -94,7 +94,7 @@ var _ = Describe("VM watcher", func() {
 			expectedVM.Status.Phase = v1.Scheduling
 			expectedVM.Status.MigrationNodeName = pod.Spec.NodeName
 
-			// RegisterCommon the expected REST call
+			// registerCommon the expected REST call
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/api/v1/namespaces/default/pods"),
@@ -149,7 +149,7 @@ var _ = Describe("VM watcher", func() {
 			expectedVM.Status.NodeName = pod.Spec.NodeName
 			expectedVM.ObjectMeta.Labels = map[string]string{v1.NodeNameLabel: pod.Spec.NodeName}
 
-			// RegisterCommon the expected REST call
+			// registerCommon the expected REST call
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/api/v1/namespaces/default/pods"),

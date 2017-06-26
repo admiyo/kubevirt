@@ -22,7 +22,9 @@ import (
 )
 
 var (
-	CC                dependencies.ComponentCache
+	FS dependencies.FactorySet = dependencies.NewFactorySet()
+	CC dependencies.ComponentCache
+
 	launcherImage     string = ""
 	migratorImage     string = ""
 	Host              string
@@ -43,37 +45,39 @@ func RegisterLive() {
 		return
 	}
 	live_registered = true
-	CC.Register(reflect.TypeOf((*kubernetes.Clientset)(nil)), createClientSet)
-	CC.Register(reflect.TypeOf((*http.Server)(nil)), createHttpServer)
-	CC.Register(reflect.TypeOf((*rest.RESTClient)(nil)), createRestClient)
-	CC.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
+	registerCommon()
+	FS.Register(reflect.TypeOf((*kubernetes.Clientset)(nil)), createClientSet)
+	FS.Register(reflect.TypeOf((*http.Server)(nil)), createHttpServer)
+	FS.Register(reflect.TypeOf((*rest.RESTClient)(nil)), createRestClient)
+	FS.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
 }
 
-func RegisterCommon() {
+func registerCommon() {
 	if common_registered {
 		return
 	}
 	common_registered = true
-	CC = dependencies.NewComponentCache()
 
-	CC.Register(reflect.TypeOf((*StoreAndInformer)(nil)), createStoreAndInformer)
-	CC.Register(reflect.TypeOf((*MigrationController)(nil)), createMigrationController)
+	FS.Register(reflect.TypeOf((*StoreAndInformer)(nil)), createStoreAndInformer)
+	FS.Register(reflect.TypeOf((*MigrationController)(nil)), createMigrationController)
 
-	CC.Register(reflect.TypeOf((*VMServiceStruct)(nil)), createVMService)
-	CC.Register(reflect.TypeOf((*TemplateServiceStruct)(nil)), createTemplateService)
+	FS.Register(reflect.TypeOf((*VMServiceStruct)(nil)), createVMService)
+	FS.Register(reflect.TypeOf((*TemplateServiceStruct)(nil)), createTemplateService)
 
-	CC.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "migration", createCache)
-	CC.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "migration", createQueue)
-	CC.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "migration", createListWatch)
+	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "migration", createCache)
+	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "migration", createQueue)
+	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "migration", createListWatch)
 
-	CC.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "vm", createCache)
-	CC.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "vm", createQueue)
-	CC.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "vm", createListWatch)
+	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "vm", createCache)
+	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "vm", createQueue)
+	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "vm", createListWatch)
 
 	flag.StringVar(&migratorImage, "migrator-image", "virt-handler", "Container which orchestrates a VM migration")
 	flag.StringVar(&launcherImage, "launcher-image", "virt-launcher", "Shim container for containerized VMs")
 	flag.StringVar(&Host, "listen", "0.0.0.0", "Address and Port where to listen on")
 	flag.IntVar(&Port, "port", 8182, "Port to listen on")
+
+	CC = dependencies.NewComponentCache(FS)
 
 	flag.Parse()
 }
