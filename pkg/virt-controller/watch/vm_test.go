@@ -50,7 +50,7 @@ var _ = Describe("VM watcher", func() {
 
 	logging.DefaultLogger().SetIOWriter(GinkgoWriter)
 
-	Register()
+	RegisterCommon()
 	RegisterTestObjects()
 
 	BeforeEach(func() {
@@ -94,7 +94,7 @@ var _ = Describe("VM watcher", func() {
 			expectedVM.Status.Phase = v1.Scheduling
 			expectedVM.Status.MigrationNodeName = pod.Spec.NodeName
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/api/v1/namespaces/default/pods"),
@@ -149,7 +149,7 @@ var _ = Describe("VM watcher", func() {
 			expectedVM.Status.NodeName = pod.Spec.NodeName
 			expectedVM.ObjectMeta.Labels = map[string]string{v1.NodeNameLabel: pod.Spec.NodeName}
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/api/v1/namespaces/default/pods"),

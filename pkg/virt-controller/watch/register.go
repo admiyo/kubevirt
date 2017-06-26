@@ -22,12 +22,13 @@ import (
 )
 
 var (
-	CC            dependencies.ComponentCache
-	launcherImage string = ""
-	migratorImage string = ""
-	Host          string
-	Port          int
-	registered    bool = false
+	CC                dependencies.ComponentCache
+	launcherImage     string = ""
+	migratorImage     string = ""
+	Host              string
+	Port              int
+	common_registered bool = false
+	live_registered   bool = false
 )
 
 type RateLimitingInterfaceStruct struct {
@@ -37,19 +38,27 @@ type IndexerStruct struct {
 	cache.Indexer
 }
 
-func Register() {
-	if registered {
+func RegisterLive() {
+	if live_registered {
 		return
 	}
-	registered = true
+	live_registered = true
+	CC.Register(reflect.TypeOf((*kubernetes.Clientset)(nil)), createClientSet)
+	CC.Register(reflect.TypeOf((*http.Server)(nil)), createHttpServer)
+	CC.Register(reflect.TypeOf((*rest.RESTClient)(nil)), createRestClient)
+	CC.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
+}
+
+func RegisterCommon() {
+	if common_registered {
+		return
+	}
+	common_registered = true
 	CC = dependencies.NewComponentCache()
 
-	CC.Register(reflect.TypeOf((*http.Server)(nil)), createHttpServer)
 	CC.Register(reflect.TypeOf((*StoreAndInformer)(nil)), createStoreAndInformer)
-	CC.Register(reflect.TypeOf((*kubernetes.Clientset)(nil)), createClientSet)
 	CC.Register(reflect.TypeOf((*MigrationController)(nil)), createMigrationController)
-	CC.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
-	CC.Register(reflect.TypeOf((*rest.RESTClient)(nil)), createRestClient)
+
 	CC.Register(reflect.TypeOf((*VMServiceStruct)(nil)), createVMService)
 	CC.Register(reflect.TypeOf((*TemplateServiceStruct)(nil)), createTemplateService)
 

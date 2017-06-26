@@ -1,6 +1,9 @@
 package dependencies
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 type ComponentFactory func(CC ComponentCache, which string) (interface{}, error)
 
@@ -26,12 +29,22 @@ func (cc ComponentCache) Register(Type reflect.Type, factory ComponentFactory) {
 	var which string
 	which = ""
 	key := ComponentKey{Type, which}
-	cc.factories[key] = factory
+	if _, ok := cc.factories[key]; ok {
+		panic(fmt.Sprintf(
+			"duplicate registration for type:%s which:%s", Type.String(), which))
+	} else {
+		cc.factories[key] = factory
+	}
 }
 
 func (cc ComponentCache) RegisterFactory(Type reflect.Type, which string, factory ComponentFactory) {
 	key := ComponentKey{Type, which}
-	cc.factories[key] = factory
+	if _, ok := cc.factories[key]; ok {
+		panic("duplicate registration for type/which")
+	} else {
+		cc.factories[key] = factory
+	}
+
 }
 
 func (cc ComponentCache) FetchComponent(Type reflect.Type, which string) interface{} {

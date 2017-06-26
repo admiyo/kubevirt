@@ -189,7 +189,7 @@ var _ = Describe("Migration", func() {
 	Context("Running Migration target Pod for a running VM given", func() {
 		It("should update the VM with the migration target node of the running Pod", func() {
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Running)),
 				handleGetPodList(podList),
@@ -206,7 +206,7 @@ var _ = Describe("Migration", func() {
 
 		It("failed GET oF VM should requeue", func() {
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVMAuthError(buildExpectedVM(v1.Running)),
 			)
@@ -221,7 +221,7 @@ var _ = Describe("Migration", func() {
 
 		It("failed GET oF Pod List should requeue", func() {
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Running)),
 				handleGetPodListAuthError(podList),
@@ -237,7 +237,7 @@ var _ = Describe("Migration", func() {
 
 		It("Should Mark Migration as failed if VM Not found.", func() {
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVMNotFound(),
 				handlePutMigration(migration, v1.MigrationFailed),
@@ -252,7 +252,7 @@ var _ = Describe("Migration", func() {
 
 		It("should requeue if VM Not found and Migration update error.", func() {
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVMNotFound(),
 				handlePutMigrationAuthError(),
@@ -265,7 +265,7 @@ var _ = Describe("Migration", func() {
 		})
 
 		It("Should mark Migration failed if VM not running ", func() {
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Scheduled)),
 				handlePutMigration(migration, v1.MigrationFailed),
@@ -278,7 +278,7 @@ var _ = Describe("Migration", func() {
 		})
 
 		It("Should Requeue if VM not running and updateMigratio0n Failure", func() {
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Scheduled)),
 				handlePutMigrationAuthError(),
@@ -292,7 +292,7 @@ var _ = Describe("Migration", func() {
 
 		It("should requeue if Migration update fails", func() {
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Running)),
 				handleGetPodList(podList),
@@ -312,7 +312,7 @@ var _ = Describe("Migration", func() {
 			vm := buildExpectedVM(v1.Running)
 			vm.Spec.NodeSelector = map[string]string{"beta.kubernetes.io/arch": "i386"}
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(vm),
 			)
@@ -327,7 +327,7 @@ var _ = Describe("Migration", func() {
 
 		It("should requeue if create of the Target Pod fails ", func() {
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Running)),
 				handleGetPodList(podList),
@@ -352,7 +352,7 @@ var _ = Describe("Migration", func() {
 			unmatchedPodList.Items[0].Labels[v1.MigrationLabel] = currentMigration.GetObjectMeta().GetName()
 			migrationCache.Add(currentMigration)
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Running)),
 				handleGetPodList(unmatchedPodList),
@@ -376,7 +376,7 @@ var _ = Describe("Migration", func() {
 			unmatchedPodList.Items[0].Labels[v1.MigrationLabel] = currentMigration.GetObjectMeta().GetName()
 			migrationCache.Add(currentMigration)
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			server.AppendHandlers(
 				handleGetTestVM(buildExpectedVM(v1.Running)),
 				handleGetPodList(unmatchedPodList),
@@ -407,7 +407,7 @@ var _ = Describe("Migration", func() {
 				mockPod(2, "bogus"),
 				targetPod}
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			expectedVM0 := buildExpectedVM(v1.Running)
 			expectedVM0.Status.NodeName = sourceNodeName
 
@@ -441,7 +441,7 @@ var _ = Describe("Migration", func() {
 				mockPod(2, "bogus"),
 				targetPod}
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			expectedVM0 := buildExpectedVM(v1.Running)
 
 			migrationPodList := clientv1.PodList{}
@@ -480,7 +480,7 @@ var _ = Describe("Migration", func() {
 				mockPod(2, "bogus"),
 				targetPod}
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			expectedVM0 := buildExpectedVM(v1.Running)
 			expectedVM0.Status.MigrationNodeName = ""
 
@@ -524,7 +524,7 @@ var _ = Describe("Migration", func() {
 				mockPod(2, "bogus"),
 				targetPod}
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			expectedVM0 := buildExpectedVM(v1.Running)
 			expectedVM0.Status.NodeName = sourceNodeName
 			expectedVM1 := buildExpectedVM(v1.Migrating)
@@ -576,7 +576,7 @@ var _ = Describe("Migration", func() {
 				mockPod(2, "bogus"),
 				targetPod}
 
-			// Register the expected REST call
+			// RegisterCommon the expected REST call
 			expectedVM0 := buildExpectedVM(v1.Running)
 			expectedVM0.Status.NodeName = sourceNodeName
 			expectedVM1 := buildExpectedVM(v1.Running)
