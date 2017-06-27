@@ -50,7 +50,6 @@ func RegisterLive() {
 	FS.Register(ClientsetType, createClientSet)
 	FS.Register(reflect.TypeOf((*http.Server)(nil)), createHttpServer)
 	FS.Register(reflect.TypeOf((*rest.RESTClient)(nil)), createRestClient)
-	FS.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
 }
 
 func registerCommon() {
@@ -58,6 +57,8 @@ func registerCommon() {
 		return
 	}
 	common_registered = true
+
+	FS.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
 
 	FS.Register(reflect.TypeOf((*StoreAndInformer)(nil)), createStoreAndInformer)
 	FS.Register(reflect.TypeOf((*MigrationController)(nil)), createMigrationController)
