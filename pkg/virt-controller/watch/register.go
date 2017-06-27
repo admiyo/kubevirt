@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
+	kubeapi "k8s.io/client-go/pkg/api"
 	k8sv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -115,7 +116,20 @@ func createTemplateService(cc dependencies.ComponentCache, _ string) (interface{
 }
 
 func createVMController(cc dependencies.ComponentCache, _ string) (interface{}, error) {
-	return NewVMController(*GetVMService(cc), nil, GetRestClient(cc), GetClientSet(cc)), nil
+
+	lw := cache.NewListWatchFromClient(GetRestClient(cc), "vms", kubeapi.NamespaceDefault, fields.Everything())
+	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	indexer, informer := cache.NewIndexerInformer(lw, &kubev1.VM{}, 0, kubecli.NewResourceEventHandlerFuncsForWorkqueue(queue), cache.Indexers{})
+	return &VMController{
+		restClient: GetRestClient(cc),
+		vmService:  *GetVMService(cc),
+		queue:      queue,
+		store:      indexer,
+		informer:   informer,
+		recorder:   nil,
+		clientset:  GetClientSet(cc),
+	}, nil
+
 }
 
 func createMigrationController(cc dependencies.ComponentCache, _ string) (interface{}, error) {
