@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/http"
 	"reflect"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -11,8 +12,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-
-	"strconv"
 
 	kubev1 "kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/dependencies"
@@ -29,8 +28,9 @@ var (
 	migratorImage     string = ""
 	Host              string
 	Port              int
-	common_registered bool = false
-	live_registered   bool = false
+	common_registered bool         = false
+	live_registered   bool         = false
+	ClientsetType     reflect.Type = reflect.TypeOf((*kubernetes.Clientset)(nil))
 )
 
 type RateLimitingInterfaceStruct struct {
@@ -46,7 +46,7 @@ func RegisterLive() {
 	}
 	live_registered = true
 	registerCommon()
-	FS.Register(reflect.TypeOf((*kubernetes.Clientset)(nil)), createClientSet)
+	FS.Register(ClientsetType, createClientSet)
 	FS.Register(reflect.TypeOf((*http.Server)(nil)), createHttpServer)
 	FS.Register(reflect.TypeOf((*rest.RESTClient)(nil)), createRestClient)
 	FS.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
@@ -165,51 +165,27 @@ func createHttpServer(cc dependencies.ComponentCache, _ string) (interface{}, er
 // Accessor functions below
 
 func GetStoreAndInformer(cc dependencies.ComponentCache) *StoreAndInformer {
-	val, ok := cc.FetchComponent(reflect.TypeOf((*StoreAndInformer)(nil)), "migration").(*StoreAndInformer)
-	if !ok {
-		panic(val)
-	}
-	return val
+	return cc.FetchComponent(reflect.TypeOf((*StoreAndInformer)(nil)), "migration").(*StoreAndInformer)
 }
 
 func GetListWatch(cc dependencies.ComponentCache, which string) *cache.ListWatch {
-	val, ok := cc.FetchComponent(reflect.TypeOf((*cache.ListWatch)(nil)), which).(*cache.ListWatch)
-	if !ok {
-		panic(val)
-	}
-	return val
+	return cc.FetchComponent(reflect.TypeOf((*cache.ListWatch)(nil)), which).(*cache.ListWatch)
 }
 
 func GetQueue(cc dependencies.ComponentCache, which string) *RateLimitingInterfaceStruct {
-	val, ok := cc.FetchComponent(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), which).(*RateLimitingInterfaceStruct)
-	if !ok {
-		panic(val)
-	}
-	return val
+	return cc.FetchComponent(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), which).(*RateLimitingInterfaceStruct)
 }
 
 func GetCache(cc dependencies.ComponentCache, which string) *IndexerStruct {
-	val, ok := cc.FetchComponent(reflect.TypeOf((*IndexerStruct)(nil)), which).(*IndexerStruct)
-	if !ok {
-		panic(val)
-	}
-	return val
+	return cc.FetchComponent(reflect.TypeOf((*IndexerStruct)(nil)), which).(*IndexerStruct)
 }
 
 func GetClientSet(cc dependencies.ComponentCache) *kubernetes.Clientset {
-	val, ok := cc.Fetch(reflect.TypeOf((*kubernetes.Clientset)(nil))).(*kubernetes.Clientset)
-	if !ok {
-		panic(val)
-	}
-	return val
+	return cc.Fetch(ClientsetType).(*kubernetes.Clientset)
 }
 
 func GetRestClient(cc dependencies.ComponentCache) *rest.RESTClient {
-	t, ok := cc.Fetch(reflect.TypeOf((*rest.RESTClient)(nil))).(*rest.RESTClient)
-	if !ok {
-		panic(t)
-	}
-	return t
+	return cc.Fetch(reflect.TypeOf((*rest.RESTClient)(nil))).(*rest.RESTClient)
 }
 
 func GetTemplateService(cc dependencies.ComponentCache) *TemplateServiceStruct {
