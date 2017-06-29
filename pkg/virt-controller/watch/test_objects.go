@@ -48,8 +48,8 @@ func createTestVMController(cc dependencies.ComponentCache, _ string) (interface
 	return &VMController{
 		restClient: GetRestClient(cc),
 		vmService:  *GetVMService(cc),
-		queue:      GetQueue(cc, "vm").RateLimitingInterface,
-		store:      GetCache(cc, "vm").Indexer,
+		queue:      GetQueue(cc, "vms").RateLimitingInterface,
+		store:      GetCache(cc, "vms").Indexer,
 	}, nil
 }
 

@@ -21,6 +21,8 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 )
 
+const vms = "vms"
+
 var (
 	FS dependencies.FactorySet = dependencies.NewFactorySet()
 	CC dependencies.ComponentCache
@@ -50,6 +52,8 @@ func RegisterLive() {
 	FS.Register(ClientsetType, createClientSet)
 	FS.Register(reflect.TypeOf((*http.Server)(nil)), createHttpServer)
 	FS.Register(reflect.TypeOf((*rest.RESTClient)(nil)), createRestClient)
+	FS.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
+
 }
 
 func registerCommon() {
@@ -57,8 +61,6 @@ func registerCommon() {
 		return
 	}
 	common_registered = true
-
-	FS.Register(reflect.TypeOf((*VMController)(nil)), createVMController)
 
 	FS.Register(reflect.TypeOf((*StoreAndInformer)(nil)), createStoreAndInformer)
 	FS.Register(reflect.TypeOf((*MigrationController)(nil)), createMigrationController)
@@ -70,9 +72,9 @@ func registerCommon() {
 	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "migration", createQueue)
 	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "migration", createListWatch)
 
-	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "vm", createCache)
-	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "vm", createQueue)
-	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "vm", createListWatch)
+	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "vms", createCache)
+	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "vms", createQueue)
+	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "vms", createListWatch)
 
 	flag.StringVar(&migratorImage, "migrator-image", "virt-handler", "Container which orchestrates a VM migration")
 	flag.StringVar(&launcherImage, "launcher-image", "virt-launcher", "Shim container for containerized VMs")

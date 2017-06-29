@@ -61,8 +61,8 @@ var _ = Describe("VM watcher", func() {
 		templateService = GetTemplateService(CC).TemplateService
 		restClient = GetRestClient(CC)
 		vmService = GetVMService(CC).VMService
-		vmCache = GetCache(CC, "vm")
-		vmQueue = GetQueue(CC, "vm")
+		vmCache = GetCache(CC, "vms")
+		vmQueue = GetQueue(CC, "vms")
 		vmController = GetVMController(CC)
 	})
 
