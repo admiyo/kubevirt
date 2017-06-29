@@ -8,7 +8,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	kubeapi "k8s.io/client-go/pkg/api"
 	k8sv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -21,7 +20,10 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 )
 
-const vms = "vms"
+const (
+	vms        = "vms"
+	migrations = "migrations"
+)
 
 var (
 	FS dependencies.FactorySet = dependencies.NewFactorySet()
@@ -68,13 +70,13 @@ func registerCommon() {
 	FS.Register(reflect.TypeOf((*VMServiceStruct)(nil)), createVMService)
 	FS.Register(reflect.TypeOf((*TemplateServiceStruct)(nil)), createTemplateService)
 
-	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "migration", createCache)
-	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "migration", createQueue)
-	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "migration", createListWatch)
+	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), migrations, createCache)
+	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), migrations, createQueue)
+	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), migrations, createListWatch)
 
-	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), "vms", createCache)
-	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), "vms", createQueue)
-	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), "vms", createListWatch)
+	FS.RegisterFactory(reflect.TypeOf((*IndexerStruct)(nil)), vms, createCache)
+	FS.RegisterFactory(reflect.TypeOf((*RateLimitingInterfaceStruct)(nil)), vms, createQueue)
+	FS.RegisterFactory(reflect.TypeOf((*cache.ListWatch)(nil)), vms, createListWatch)
 
 	flag.StringVar(&migratorImage, "migrator-image", "virt-handler", "Container which orchestrates a VM migration")
 	flag.StringVar(&launcherImage, "launcher-image", "virt-launcher", "Shim container for containerized VMs")
@@ -120,7 +122,8 @@ func createTemplateService(cc dependencies.ComponentCache, _ string) (interface{
 
 func createVMController(cc dependencies.ComponentCache, _ string) (interface{}, error) {
 
-	lw := cache.NewListWatchFromClient(GetRestClient(cc), "vms", kubeapi.NamespaceDefault, fields.Everything())
+	lw := GetListWatch(cc, vms)
+	//	lw := cache.NewListWatchFromClient(GetRestClient(cc), "vms", kubeapi.NamespaceDefault, fields.Everything())
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	indexer, informer := cache.NewIndexerInformer(lw, &kubev1.VM{}, 0, kubecli.NewResourceEventHandlerFuncsForWorkqueue(queue), cache.Indexers{})
 	return &VMController{
@@ -160,8 +163,8 @@ type StoreAndInformer struct {
 }
 
 func createStoreAndInformer(cc dependencies.ComponentCache, _ string) (interface{}, error) {
-	lw := GetListWatch(cc, "migration")
-	queue := GetQueue(cc, "migration")
+	lw := GetListWatch(cc, migrations)
+	queue := GetQueue(cc, migrations)
 	store, informer := cache.NewIndexerInformer(lw, &kubev1.Migration{}, 0, kubecli.NewResourceEventHandlerFuncsForWorkqueue(queue), cache.Indexers{})
 	return StoreAndInformer{
 		store,
@@ -182,7 +185,7 @@ func createHttpServer(cc dependencies.ComponentCache, _ string) (interface{}, er
 // Accessor functions below
 
 func GetStoreAndInformer(cc dependencies.ComponentCache) *StoreAndInformer {
-	return cc.FetchComponent(reflect.TypeOf((*StoreAndInformer)(nil)), "migration").(*StoreAndInformer)
+	return cc.FetchComponent(reflect.TypeOf((*StoreAndInformer)(nil)), migrations).(*StoreAndInformer)
 }
 
 func GetListWatch(cc dependencies.ComponentCache, which string) *cache.ListWatch {

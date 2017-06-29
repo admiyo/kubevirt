@@ -38,8 +38,8 @@ func createTestMigrationController(cc dependencies.ComponentCache, _ string) (in
 		restClient: GetRestClient(cc),
 		vmService:  *GetVMService(cc),
 		clientset:  GetClientSet(cc),
-		queue:      GetQueue(cc, "migration").RateLimitingInterface,
-		store:      GetCache(cc, "migration").Indexer,
+		queue:      GetQueue(cc, migrations).RateLimitingInterface,
+		store:      GetCache(cc, migrations).Indexer,
 		informer:   nil,
 	}, nil
 }
@@ -48,8 +48,8 @@ func createTestVMController(cc dependencies.ComponentCache, _ string) (interface
 	return &VMController{
 		restClient: GetRestClient(cc),
 		vmService:  *GetVMService(cc),
-		queue:      GetQueue(cc, "vms").RateLimitingInterface,
-		store:      GetCache(cc, "vms").Indexer,
+		queue:      GetQueue(cc, vms).RateLimitingInterface,
+		store:      GetCache(cc, vms).Indexer,
 	}, nil
 }
 
