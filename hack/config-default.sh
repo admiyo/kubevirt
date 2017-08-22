@@ -9,3 +9,4 @@ master_port=8184
 network_provider=weave
 primary_nic=${primary_nic:-eth1}
 primary_node_name=${primary_node_name:-master}
+kube_namespace=kube-system

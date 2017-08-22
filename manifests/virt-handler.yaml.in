@@ -9,6 +9,7 @@ spec:
       labels:
         daemon: virt-handler
     spec:
+      serviceAccountName: kubevirt
       containers:
       - name: virt-handler
         ports:
